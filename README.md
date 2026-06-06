@@ -1,45 +1,44 @@
 # yurgellab-website
 
-Site estático do **YurgelLab**, publicado via **GitHub Pages** no domínio
-[yurgellab.com](https://yurgellab.com) (registrado na GoDaddy).
+Site do **Yurgel Lab**, publicado via **GitHub Pages** em
+[yurgellab.com](https://yurgellab.com) (domínio registrado na GoDaddy).
 
 ## Estrutura
 
 ```
 yurgellab-website/
-├── index.html      # Página principal
-├── styles.css      # Estilos
-├── script.js       # JS mínimo
-├── assets/         # Imagens e mídia
+├── index.html      # Loader: detecta desktop/mobile e redireciona
+├── desktop.html    # Página desktop — CIFRADA (StatiCrypt / AES-256)
+├── mobile.html     # Página mobile  — CIFRADA (StatiCrypt / AES-256)
 ├── CNAME           # Domínio customizado (yurgellab.com)
 └── .nojekyll       # Desativa processamento Jekyll do GitHub Pages
 ```
 
-## Desenvolvimento local
+## Proteção por senha
 
-Abra `index.html` no navegador, ou rode um servidor estático:
+O conteúdo é **criptografado** com [StatiCrypt](https://github.com/robinmoisson/staticrypt)
+(AES-256, client-side). Sem a senha correta, não há conteúdo legível nem no
+código-fonte. A mesma senha vale para desktop e mobile.
+
+### Regerar as páginas cifradas
+
+A partir dos HTMLs originais (não versionados), com o mesmo salt em
+`.staticrypt.json` (mantido apenas localmente):
 
 ```bash
-python3 -m http.server 8000
-# acesse http://localhost:8000
+npx staticrypt desktop_original.html mobile_original.html -p 'SENHA' --short --remember 30
+mv encrypted/desktop.html desktop.html && mv encrypted/mobile.html mobile.html
+rmdir encrypted
 ```
 
 ## Deploy
 
-O deploy é automático: qualquer `push` para a branch `main` publica o site no
-GitHub Pages. Em **Settings → Pages**, a origem está configurada para
-`main` / `(root)`.
+Push para `main` publica automaticamente no GitHub Pages
+(Settings → Pages: `main` / root).
 
 ## Domínio (GoDaddy → GitHub Pages)
 
-No painel DNS da GoDaddy, configurar:
-
-| Tipo  | Nome | Valor                  |
-|-------|------|------------------------|
-| A     | @    | 185.199.108.153        |
-| A     | @    | 185.199.109.153        |
-| A     | @    | 185.199.110.153        |
-| A     | @    | 185.199.111.153        |
-| CNAME | www  | martina-cyber.github.io |
-
-Após a propagação do DNS, ativar **Enforce HTTPS** em Settings → Pages.
+| Tipo  | Nome | Valor                    |
+|-------|------|--------------------------|
+| A     | @    | 185.199.108–111.153 (4×) |
+| CNAME | www  | yurgellab.com            |

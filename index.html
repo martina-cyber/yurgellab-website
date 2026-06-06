@@ -3,88 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>YurgelLab</title>
-  <meta name="description" content="YurgelLab — pesquisa, tecnologia e inovação." />
-
-  <!-- Open Graph -->
-  <meta property="og:title" content="YurgelLab" />
-  <meta property="og:description" content="Pesquisa, tecnologia e inovação." />
-  <meta property="og:type" content="website" />
-  <meta property="og:url" content="https://yurgellab.com" />
-
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+  <title>Yurgel Lab</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <style>
+    html, body { margin: 0; height: 100%; background: #0c2a47; }
+  </style>
+  <script>
+    // Direciona para a versão desktop ou mobile (ambas protegidas por senha).
+    (function () {
+      var isMobile = window.matchMedia("(max-width: 768px)").matches
+        || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      var target = isMobile ? "mobile.html" : "desktop.html";
+      window.location.replace(target + window.location.hash);
+    })();
+  </script>
 </head>
-<body>
-  <header class="site-header">
-    <nav class="nav">
-      <a class="brand" href="/">YurgelLab</a>
-      <ul class="nav-links">
-        <li><a href="#sobre">Sobre</a></li>
-        <li><a href="#projetos">Projetos</a></li>
-        <li><a href="#contato">Contato</a></li>
-      </ul>
-    </nav>
-  </header>
-
-  <main>
-    <section class="hero">
-      <div class="hero-inner">
-        <h1>YurgelLab</h1>
-        <p class="tagline">Pesquisa, tecnologia e inovação.</p>
-        <a class="cta" href="#contato">Fale conosco</a>
-      </div>
-    </section>
-
-    <section id="sobre" class="section">
-      <div class="container">
-        <h2>Sobre</h2>
-        <p>
-          O YurgelLab é um espaço dedicado a explorar ideias na fronteira entre
-          ciência, tecnologia e estratégia. Em breve, mais conteúdo.
-        </p>
-      </div>
-    </section>
-
-    <section id="projetos" class="section section-alt">
-      <div class="container">
-        <h2>Projetos</h2>
-        <div class="cards">
-          <article class="card">
-            <h3>Projeto 1</h3>
-            <p>Descrição breve do projeto. Substitua por conteúdo real.</p>
-          </article>
-          <article class="card">
-            <h3>Projeto 2</h3>
-            <p>Descrição breve do projeto. Substitua por conteúdo real.</p>
-          </article>
-          <article class="card">
-            <h3>Projeto 3</h3>
-            <p>Descrição breve do projeto. Substitua por conteúdo real.</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <section id="contato" class="section">
-      <div class="container">
-        <h2>Contato</h2>
-        <p>
-          E-mail: <a href="mailto:martina@martecia.com">martina@martecia.com</a><br />
-          Telefone: <a href="tel:+5551981386460">51 98138-6460</a>
-        </p>
-      </div>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <div class="container">
-      <p>&copy; <span id="year"></span> YurgelLab. Todos os direitos reservados.</p>
-    </div>
-  </footer>
-
-  <script src="script.js"></script>
-</body>
+<body></body>
 </html>
