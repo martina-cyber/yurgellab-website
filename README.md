@@ -22,14 +22,30 @@ código-fonte. A mesma senha vale para desktop e mobile.
 
 ### Regerar as páginas cifradas
 
-A partir dos HTMLs originais (não versionados), com o mesmo salt em
-`.staticrypt.json` (mantido apenas localmente):
+A partir do HTML original responsivo `_plain_bolao.html` (não versionado),
+usando o template `_staticrypt_template.html` e o mesmo salt em
+`.staticrypt.json` (mantido apenas localmente). A mesma página responsiva
+serve `desktop.html` e `mobile.html`:
 
 ```bash
-npx staticrypt desktop_original.html mobile_original.html -p 'SENHA' --short --remember 30
-mv encrypted/desktop.html desktop.html && mv encrypted/mobile.html mobile.html
-rmdir encrypted
+npx staticrypt _plain_bolao.html \
+  -t _staticrypt_template.html \
+  -p 'SENHA' --short --remember 30 \
+  -s 37d840c6b5fca59990c533e2968a1fcb \
+  --template-title 'Yurgel Lab' \
+  --template-instructions 'Conteúdo protegido. Digite a senha para acessar.' \
+  --template-color-primary '#0C2A47' \
+  --template-color-secondary '#FFFFFF' \
+  --template-placeholder 'Senha' \
+  --template-error 'Senha incorreta' \
+  -d encrypted
+cp encrypted/_plain_bolao.html desktop.html
+cp encrypted/_plain_bolao.html mobile.html
+rm -rf encrypted
 ```
+
+> A senha **não** fica versionada. A versão institucional anterior do site está
+> arquivada na branch `versao-anterior`.
 
 ## Deploy
 
