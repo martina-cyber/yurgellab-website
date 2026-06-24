@@ -5,3 +5,5 @@ node_modules/
 .vscode/
 .staticrypt.json
 _plain_*.html
+regen_bolao.sh
+backups/
