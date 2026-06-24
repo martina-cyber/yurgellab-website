@@ -1,0 +1,24 @@
+name: Bolão · resultado automático
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # a cada 15 min (horário UTC); GitHub pode atrasar alguns minutos
+  workflow_dispatch:          # permite rodar manualmente em Actions → Run workflow
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bolao-auto-resultado
+  cancel-in-progress: false
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Buscar placar na ESPN e gravar no Firebase
+        run: node scripts/auto-resultado.mjs
