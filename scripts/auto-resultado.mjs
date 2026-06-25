@@ -155,7 +155,9 @@ async function main() {
     const advReal = j.adv.team.displayName;
     const meta = { data: quando.data, horario: quando.horario, fora: nomeAdversario(advReal), flagFora: flagDe(advReal) };
     const atualMeta = await jget(`${DB}/resultados/_datas/${id}.json`).catch(() => null);
-    if (JSON.stringify(atualMeta) !== JSON.stringify(meta)) {
+    const igual = atualMeta && atualMeta.data === meta.data && atualMeta.horario === meta.horario
+      && atualMeta.fora === meta.fora && atualMeta.flagFora === meta.flagFora;
+    if (!igual) {
       await jput(`resultados/_datas/${id}`, meta);
       log(`✓ ${id}: ${meta.data} ${meta.horario} vs ${meta.fora}`);
       datasNovas++;
