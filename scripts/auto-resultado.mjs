@@ -7,12 +7,15 @@
       do Brasil na data e, se o jogo terminou, grava em resultados/<id>.
 
    2) MATA-MATA (datas ainda não definidas): varre a janela das fases
-      finais no scoreboard da ESPN, acha o jogo do Brasil, lê a FASE
-      (Round of 32, Quarterfinals, ...) e mapeia para o id do bolão.
-      Grava em datas/<id> a data/horário/adversário descobertos e, quando
-      o jogo termina, o placar em resultados/<id>.
+      finais no scoreboard da ESPN, coleta os jogos do Brasil em ORDEM
+      CRONOLÓGICA e mapeia por posição (1º jogo do mata-mata = 16-avos,
+      2º = oitavas, ...). Grava em resultados/_datas/<id> a data/horário/
+      adversário descobertos (traduzindo placeholders como "Group F 2nd
+      Place" -> "2º do Grupo F") e, quando termina, o placar em resultados/<id>.
+      (As datas ficam sob resultados/ porque as regras do Firebase só liberam
+      escrita em palpites/ e resultados/.)
 
-   A página lê datas/<id> e resultados/<id> e atualiza tudo em tempo real.
+   A página lê resultados/_datas/<id> e resultados/<id> e atualiza em tempo real.
    Registro manual e resultado já existente têm prioridade (não sobrescreve).
    ==================================================================== */
 import { readFile } from "node:fs/promises";
@@ -20,22 +23,15 @@ import { readFile } from "node:fs/promises";
 const DB   = "https://bolao-yurgel-default-rtdb.firebaseio.com";
 const ESPN = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=";
 
-/* Janela do mata-mata da Copa 2026 (varrida dia a dia). */
-const KO_INICIO = "2026-06-27";
+/* Janela do mata-mata da Copa 2026 (começa depois do último jogo de grupo
+   do Brasil, em 24/06). Varrida dia a dia. */
+const KO_INICIO = "2026-06-28";
 const KO_FIM    = "2026-07-19";
 
-/* Fase (season.type.name na ESPN) -> id do jogo no bolão. Ordem importa:
-   "Semifinals" contém "final", então semi é testado antes de final. */
-const FASE_PARA_ID = [
-  [/round of 32/i,              "bra-16avos"],
-  [/round of 16|last 16/i,      "bra-oitavas"],
-  [/quarter/i,                  "bra-quartas"],
-  [/semi/i,                     "bra-semi"],
-  [/3rd place|third place/i,    "bra-final"],
-  [/final/i,                    "bra-final"],
-];
+/* Ordem das fases do mata-mata -> id do jogo no bolão (por posição cronológica). */
+const KO_IDS = ["bra-16avos", "bra-oitavas", "bra-quartas", "bra-semi", "bra-final"];
 
-/* Bandeiras por seleção (fallback ❔ quando desconhecida). */
+/* Bandeiras por seleção (fallback ❔ quando desconhecida/placeholder). */
 const FLAGS = {
   "argentina":"🇦🇷","australia":"🇦🇺","austria":"🇦🇹","belgium":"🇧🇪","bolivia":"🇧🇴",
   "bosnia-herzegovina":"🇧🇦","brazil":"🇧🇷","cameroon":"🇨🇲","canada":"🇨🇦","chile":"🇨🇱",
@@ -46,7 +42,7 @@ const FLAGS = {
   "norway":"🇳🇴","panama":"🇵🇦","paraguay":"🇵🇾","peru":"🇵🇪","poland":"🇵🇱","portugal":"🇵🇹",
   "qatar":"🇶🇦","saudi arabia":"🇸🇦","scotland":"🏴󠁧󠁢󠁳󠁣󠁴󠁿","senegal":"🇸🇳","serbia":"🇷🇸",
   "south africa":"🇿🇦","south korea":"🇰🇷","spain":"🇪🇸","sweden":"🇸🇪","switzerland":"🇨🇭",
-  "tunisia":"🇹🇳","türkiye":"🇹🇷","turkey":"🇹🇷","united states":"🇺🇸","uruguay":"🇺🇾","wales":"🏴󠁧󠁢󠁷󠁬󠁳󠁿",
+  "tunisia":"🇹🇳","türkiye":"🇹🇷","turkey":"🇹🇷","united states":"🇺🇸","uruguay":"🇺🇾","wales":"🏴󠁧󠁢󠁷󠁬󠁥󠁳󠁿",
 };
 
 const ddmmyyyyToEspn = (d) => {
@@ -57,6 +53,18 @@ const isBrasil = (t) =>
   /brazil|brasil|\bBRA\b/i.test((t?.displayName || "") + " " + (t?.abbreviation || "") + " " + (t?.name || ""));
 const flagDe = (nome) => FLAGS[String(nome || "").trim().toLowerCase()] || "❔";
 
+/* Traduz nomes-placeholder da ESPN para português; nome real de seleção passa direto. */
+function nomeAdversario(nome) {
+  const s = String(nome || "").trim();
+  let m;
+  if ((m = s.match(/group\s+([a-l])\s+2nd/i)))            return `2º do Grupo ${m[1].toUpperCase()}`;
+  if ((m = s.match(/group\s+([a-l]).*(1st|winner)/i)))    return `1º do Grupo ${m[1].toUpperCase()}`;
+  if ((m = s.match(/(1st|winner).*group\s+([a-l])/i)))    return `1º do Grupo ${m[2].toUpperCase()}`;
+  if ((m = s.match(/winner\s+(?:match\s+)?(\d+)/i)))       return `Vencedor do Jogo ${m[1]}`;
+  if ((m = s.match(/(?:loser|runner)\D*(\d+)/i)))          return `Perdedor do Jogo ${m[1]}`;
+  return s;
+}
+
 /* ISO (UTC) -> { data:"dd/mm/yyyy", horario:"19h30 (Brasília)" } em horário de Brasília (UTC-3). */
 function brasilia(iso) {
   const t = new Date(iso);
@@ -64,11 +72,9 @@ function brasilia(iso) {
   const b = new Date(t.getTime() - 3 * 3600000);
   const dd = String(b.getUTCDate()).padStart(2, "0");
   const mm = String(b.getUTCMonth() + 1).padStart(2, "0");
-  const yyyy = b.getUTCFullYear();
   const hh = b.getUTCHours();
   const min = b.getUTCMinutes();
-  const horario = `${hh}h${min ? String(min).padStart(2, "0") : ""} (Brasília)`;
-  return { data: `${dd}/${mm}/${yyyy}`, horario };
+  return { data: `${dd}/${mm}/${b.getUTCFullYear()}`, horario: `${hh}h${min ? String(min).padStart(2, "0") : ""} (Brasília)` };
 }
 
 async function jget(url) {
@@ -78,14 +84,11 @@ async function jget(url) {
 }
 async function jput(path, valor) {
   const r = await fetch(`${DB}/${path}.json`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(valor),
+    method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(valor),
   });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
 }
 
-/* Acha o jogo do Brasil num scoreboard e devolve { ev, comp, bra, adv }. */
 function jogoDoBrasil(data) {
   for (const ev of (data.events || [])) {
     const comp = (ev.competitions || [])[0];
@@ -96,10 +99,8 @@ function jogoDoBrasil(data) {
   }
   return null;
 }
-const terminou = (ev) =>
-  ev?.status?.type?.completed === true || ev?.status?.type?.state === "post";
+const terminou = (ev) => ev?.status?.type?.completed === true || ev?.status?.type?.state === "post";
 
-/* Grava placar se o jogo terminou e ainda não há resultado registrado. */
 async function gravaResultado(id, bra, adv, ev, log) {
   const atual = await jget(`${DB}/resultados/${id}.json`).catch(() => null);
   if (atual && atual.h != null && atual.a != null) {
@@ -130,36 +131,37 @@ async function main() {
     gravados += await gravaResultado(fx.id, j.bra, j.adv, j.ev, log);
   }
 
-  /* ---------- 2) Mata-mata (descoberta por fase) ---------- */
+  /* ---------- 2) Mata-mata (descoberta por ordem cronológica) ---------- */
   const ini = new Date(KO_INICIO + "T12:00Z"), fim = new Date(KO_FIM + "T12:00Z");
-  const vistos = new Set();
+  const jogosKO = [];
+  const datasVistas = new Set();
   for (let t = new Date(ini); t <= fim; t = new Date(t.getTime() + 86400000)) {
     const dia = `${t.getUTCFullYear()}${String(t.getUTCMonth() + 1).padStart(2, "0")}${String(t.getUTCDate()).padStart(2, "0")}`;
     let data;
     try { data = await jget(ESPN + dia); } catch { continue; }
     const j = jogoDoBrasil(data);
     if (!j) continue;
+    const chave = String(j.ev.date).slice(0, 10);
+    if (datasVistas.has(chave)) continue;       // um jogo do Brasil por dia
+    datasVistas.add(chave);
+    jogosKO.push({ iso: j.ev.date, ...j });
+  }
+  jogosKO.sort((a, b) => (a.iso < b.iso ? -1 : a.iso > b.iso ? 1 : 0));
 
-    const fase = (data.leagues?.[0]?.season?.type?.name) || "";
-    const par = FASE_PARA_ID.find(([re]) => re.test(fase));
-    if (!par) continue;                         // ainda fase de grupos ou fase desconhecida
-    const id = par[1];
-    if (vistos.has(id)) continue;               // primeiro jogo do Brasil naquela fase
-    vistos.add(id);
-
-    // grava/atualiza data + adversário descobertos
-    const quando = brasilia(j.ev.date) || {};
-    const advNome = j.adv.team.displayName;
-    const meta = { data: quando.data, horario: quando.horario, fora: advNome, flagFora: flagDe(advNome) };
-    const atualMeta = await jget(`${DB}/datas/${id}.json`).catch(() => null);
+  for (let i = 0; i < jogosKO.length && i < KO_IDS.length; i++) {
+    const id = KO_IDS[i];
+    const j = jogosKO[i];
+    const quando = brasilia(j.iso) || {};
+    const advReal = j.adv.team.displayName;
+    const meta = { data: quando.data, horario: quando.horario, fora: nomeAdversario(advReal), flagFora: flagDe(advReal) };
+    const atualMeta = await jget(`${DB}/resultados/_datas/${id}.json`).catch(() => null);
     if (JSON.stringify(atualMeta) !== JSON.stringify(meta)) {
-      await jput(`datas/${id}`, meta);
-      log(`✓ ${id}: ${fase} definida — ${meta.data} ${meta.horario} vs ${advNome}`);
+      await jput(`resultados/_datas/${id}`, meta);
+      log(`✓ ${id}: ${meta.data} ${meta.horario} vs ${meta.fora}`);
       datasNovas++;
     } else {
-      log(`· ${id}: ${fase} já registrada (${meta.data} vs ${advNome})`);
+      log(`· ${id}: já registrado (${meta.data} vs ${meta.fora})`);
     }
-
     gravados += await gravaResultado(id, j.bra, j.adv, j.ev, log);
   }
 
