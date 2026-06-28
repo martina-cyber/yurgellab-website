@@ -110,8 +110,15 @@ async function gravaResultado(id, bra, adv, ev, log) {
   if (!terminou(ev)) { log(`· ${id}: Brasil x ${adv.team.displayName} ainda não terminou — aguarda`); return 0; }
   const h = Number(bra.score), a = Number(adv.score);
   if (!Number.isFinite(h) || !Number.isFinite(a)) return 0;
-  await jput(`resultados/${id}`, { h, a });
-  log(`✓ ${id}: placar gravado — Brasil ${h} x ${a} ${adv.team.displayName}`);
+  const valor = { h, a };
+  // Empate no mata-mata: registra o placar dos pênaltis (define o vencedor na página).
+  if (h === a) {
+    const ph = Number(bra.shootoutScore), pa = Number(adv.shootoutScore);
+    if (Number.isFinite(ph) && Number.isFinite(pa) && ph !== pa) { valor.ph = ph; valor.pa = pa; }
+  }
+  await jput(`resultados/${id}`, valor);
+  const penTxt = valor.ph != null ? ` (pênaltis ${valor.ph} x ${valor.pa})` : "";
+  log(`✓ ${id}: placar gravado — Brasil ${h} x ${a} ${adv.team.displayName}${penTxt}`);
   return 1;
 }
 
